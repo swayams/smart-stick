@@ -21,9 +21,13 @@ import com.phidget22.*;
 import java.util.ArrayList;
 import java.util.List;
 
+
+
 public class VoltageRatioInputExample extends Activity {
 
 	VoltageRatioInput ch;
+	VoltageRatioInput ch2;
+
 	SeekBar dataIntervalBar;
 	Spinner sensorTypeSpinner;
 	Spinner bridgeGainSpinner;
@@ -37,12 +41,12 @@ public class VoltageRatioInputExample extends Activity {
 	int minDataInterval;
 
 	/** Called when the activity is first created. */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.main);
 
-        //Hide device information and settings until one is attached
+		//Hide device information and settings until one is attached
 		LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
 		settingsAndData.setVisibility(LinearLayout.GONE);
 
@@ -74,13 +78,13 @@ public class VoltageRatioInputExample extends Activity {
 		isHubPortBox = (CheckBox) findViewById(R.id.isHubPortBox);
 		isHubPortBox.setOnCheckedChangeListener(new isHubPortChangeListener());
 
-        try
-        {
-        	ch = new VoltageRatioInput();
+		try
+		{
+			ch = new VoltageRatioInput();
 
-        	//Allow direct USB connection of Phidgets
-        	if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST))
-                com.phidget22.usb.Manager.Initialize(this);
+			//Allow direct USB connection of Phidgets
+			if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST))
+				com.phidget22.usb.Manager.Initialize(this);
 
 			//Enable server discovery to list remote Phidgets
 			this.getSystemService(Context.NSD_SERVICE);
@@ -88,16 +92,16 @@ public class VoltageRatioInputExample extends Activity {
 
 			//CSCM79 Advice
 			//Add a specific network server to communicate with Phidgets remotely
-			Net.addServer("ASUS-STRIX", "192.168.1.18", 5661, "", 0);
+			Net.addServer("", "192.168.0.210", 5661, "", 0);
 
 			//CSCM79 Advice
 			//Set addressing parameters to specify which channel to open (if any)
 			ch.setIsRemote(true);
-			ch.setDeviceSerialNumber(30406);
-//			ch.setIsHubPortDevice(true);
-//			ch.setHubPort(0);
-//			ch.setIsRemote(true);
-//			ch.setDeviceSerialNumber(620775);
+			ch.setChannel(4);
+			ch.setDeviceSerialNumber(30686);
+
+
+
 
 
 			//Remember isHubPort setting
@@ -111,15 +115,15 @@ public class VoltageRatioInputExample extends Activity {
 
 			ch.addAttachListener(new AttachListener() {
 				public void onAttach(final AttachEvent attachEvent) {
-				    AttachEventHandler handler = new AttachEventHandler(ch);
-                    runOnUiThread(handler);
+					AttachEventHandler handler = new AttachEventHandler(ch);
+					runOnUiThread(handler);
 				}
 			});
 
 			ch.addDetachListener(new DetachListener() {
 				public void onDetach(final DetachEvent detachEvent) {
-                    DetachEventHandler handler = new DetachEventHandler(ch);
-                    runOnUiThread(handler);
+					DetachEventHandler handler = new DetachEventHandler(ch);
+					runOnUiThread(handler);
 
 				}
 			});
@@ -132,11 +136,17 @@ public class VoltageRatioInputExample extends Activity {
 				}
 			});
 
+
+
 			ch.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-                    VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch, voltageRatioChangeEvent);
-                    runOnUiThread(handler);
-                }
+
+//					  VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch, voltageRatioChangeEvent);
+					System.out.println("Joystick " + voltageRatioChangeEvent.getVoltageRatio());
+					getDistanceSensor(voltageRatioChangeEvent.getVoltageRatio());
+//					  runOnUiThread(handler);
+
+				}
 			});
 
 			ch.addSensorChangeListener(new VoltageRatioInputSensorChangeListener() {
@@ -147,11 +157,12 @@ public class VoltageRatioInputExample extends Activity {
 			});
 
 			ch.open();
-        } catch (PhidgetException pe) {
-	        pe.printStackTrace();
+
+		} catch (PhidgetException pe) {
+			pe.printStackTrace();
 		}
 
-    }
+	}
 
 	private class dataIntervalChangeListener implements SeekBar.OnSeekBarChangeListener {
 		public void onProgressChanged(SeekBar seekBar, int progress,
@@ -239,8 +250,8 @@ public class VoltageRatioInputExample extends Activity {
 		}
 	}
 
-    class AttachEventHandler implements Runnable {
-    	Phidget ch;
+	class AttachEventHandler implements Runnable {
+		Phidget ch;
 
 		public AttachEventHandler(Phidget ch) {
 			this.ch = ch;
@@ -253,6 +264,7 @@ public class VoltageRatioInputExample extends Activity {
 			TextView attachedTxt = (TextView) findViewById(R.id.attachedTxt);
 
 			attachedTxt.setText("Attached");
+
 			try {
 				TextView nameTxt = (TextView) findViewById(R.id.nameTxt);
 				TextView serialTxt = (TextView) findViewById(R.id.serialTxt);
@@ -278,9 +290,9 @@ public class VoltageRatioInputExample extends Activity {
 
 				//Limit the maximum dataInterval on the SeekBar to 5000 so it remains usable
 				if(((VoltageRatioInput)ch).getMaxDataInterval() >= 5000)
-                    dataIntervalBar.setMax(5000 - minDataInterval);
+					dataIntervalBar.setMax(5000 - minDataInterval);
 				else
-                    dataIntervalBar.setMax(((VoltageRatioInput)ch).getMaxDataInterval() - minDataInterval);
+					dataIntervalBar.setMax(((VoltageRatioInput)ch).getMaxDataInterval() - minDataInterval);
 
 				List<BridgeGain> supportedBridgeGains;
 				switch (ch.getChannelSubclass()) { //initialize form elements based on detected device
@@ -329,20 +341,20 @@ public class VoltageRatioInputExample extends Activity {
 							((LinearLayout) findViewById(R.id.sensorTypeSection)).setVisibility(LinearLayout.VISIBLE);
 						}
 						break;
-					}
+				}
 			} catch (PhidgetException e) {
 				e.printStackTrace();
 			}
 
 		}
-    }
+	}
 
-    class DetachEventHandler implements Runnable {
-    	Phidget ch;
+	class DetachEventHandler implements Runnable {
+		Phidget ch;
 
-    	public DetachEventHandler(Phidget ch) {
-    		this.ch = ch;
-    	}
+		public DetachEventHandler(Phidget ch) {
+			this.ch = ch;
+		}
 
 		public void run() {
 			LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
@@ -369,16 +381,16 @@ public class VoltageRatioInputExample extends Activity {
 			((LinearLayout)findViewById(R.id.sensorTypeSection)).setVisibility(LinearLayout.GONE);
 			((LinearLayout)findViewById(R.id.bridgeSection)).setVisibility(LinearLayout.GONE);
 
-            //reset voltage ratio visibility
-            ((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.VISIBLE);
-            ((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.GONE);
+			//reset voltage ratio visibility
+			((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.VISIBLE);
+			((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.GONE);
 
 			//clear voltage ratio information
 			((TextView)findViewById(R.id.voltageRatioTxt)).setText("");
 			((TextView)findViewById(R.id.sensorValueTxt)).setText("");
 			((TextView)findViewById(R.id.sensorUnits)).setText("");
 		}
-    }
+	}
 
 	class ErrorEventHandler implements Runnable {
 		Phidget ch;
@@ -390,13 +402,13 @@ public class VoltageRatioInputExample extends Activity {
 		}
 
 		public void run() {
-			 if (errToast == null)
-				 errToast = Toast.makeText(getApplicationContext(), errorEvent.getDescription(), Toast.LENGTH_SHORT);
+			if (errToast == null)
+				errToast = Toast.makeText(getApplicationContext(), errorEvent.getDescription(), Toast.LENGTH_SHORT);
 
-			 //replace the previous toast message if a new error occurs
-			 errToast.setText(errorEvent.getDescription());
-			 errToast.show();
-        }
+			//replace the previous toast message if a new error occurs
+			errToast.setText(errorEvent.getDescription());
+			errToast.show();
+		}
 	}
 
 	class VoltageRatioInputVoltageRatioChangeEventHandler implements Runnable {
@@ -409,7 +421,7 @@ public class VoltageRatioInputExample extends Activity {
 		}
 
 		public void run() {
-		    TextView voltageRatioTxt = (TextView)findViewById(R.id.voltageRatioTxt);
+			TextView voltageRatioTxt = (TextView)findViewById(R.id.voltageRatioTxt);
 
 			voltageRatioTxt.setText(String.valueOf(voltageRatioChangeEvent.getVoltageRatio()));
 		}
@@ -440,10 +452,10 @@ public class VoltageRatioInputExample extends Activity {
 		super.onSaveInstanceState(savedInstanceState);
 	}
 
-    @Override
-    protected void onDestroy() {
-    	super.onDestroy();
-    	try {
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		try {
 			ch.close();
 
 		} catch (PhidgetException e) {
@@ -452,8 +464,71 @@ public class VoltageRatioInputExample extends Activity {
 
 		//Disable USB connection to Phidgets
 		if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST))
-            com.phidget22.usb.Manager.Uninitialize();
-    }
+			com.phidget22.usb.Manager.Uninitialize();
+	}
+
+
+	public void getDistanceSensor (double e ) {
+		if(e > 0.7) {
+
+			//distance
+
+			try{
+				ch2 = new VoltageRatioInput();
+				ch2.setIsRemote(true);
+				ch2.setDeviceSerialNumber(30686);
+				ch2.setChannel(3);
+
+
+				ch2.addAttachListener(new AttachListener() {
+					public void onAttach(final AttachEvent attachEvent) {
+						AttachEventHandler handler = new AttachEventHandler(ch2);
+						runOnUiThread(handler);
+					}
+				});
+
+				ch2.addDetachListener(new DetachListener() {
+					public void onDetach(final DetachEvent detachEvent) {
+						DetachEventHandler handler = new DetachEventHandler(ch2);
+						runOnUiThread(handler);
+
+					}
+				});
+
+				ch2.addErrorListener(new ErrorListener() {
+					public void onError(final ErrorEvent errorEvent) {
+						ErrorEventHandler handler = new ErrorEventHandler(ch2, errorEvent);
+						runOnUiThread(handler);
+
+					}
+				});
+
+
+
+				ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
+					public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
+//
+//						VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch2, voltageRatioChangeEvent);
+//						runOnUiThread(handler);
+
+						System.out.println(voltageRatioChangeEvent.getVoltageRatio());
+
+					}
+				});
+
+				ch2.addSensorChangeListener(new VoltageRatioInputSensorChangeListener() {
+					public void onSensorChange(VoltageRatioInputSensorChangeEvent sensorChangeEvent) {
+						VoltageRatioInputSensorChangeEventHandler handler = new VoltageRatioInputSensorChangeEventHandler(ch2, sensorChangeEvent);
+						runOnUiThread(handler);
+					}
+				});
+
+				ch2.open();
+			} catch (PhidgetException pe) {
+				pe.printStackTrace();
+			}
+		}
+	}
 
 }
 
