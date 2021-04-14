@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import com.phidget22.*;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class VoltageRatioInputExample extends Activity {
 
 	VoltageRatioInput ch;
 	VoltageRatioInput ch2;
+	RCServo ch3;
 
 	SeekBar dataIntervalBar;
 	Spinner sensorTypeSpinner;
@@ -411,22 +413,6 @@ public class VoltageRatioInputExample extends Activity {
 		}
 	}
 
-	class VoltageRatioInputVoltageRatioChangeEventHandler implements Runnable {
-		Phidget ch;
-		VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent;
-
-		public VoltageRatioInputVoltageRatioChangeEventHandler(Phidget ch, VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-			this.ch = ch;
-			this.voltageRatioChangeEvent = voltageRatioChangeEvent;
-		}
-
-		public void run() {
-			TextView voltageRatioTxt = (TextView)findViewById(R.id.voltageRatioTxt);
-
-			voltageRatioTxt.setText(String.valueOf(voltageRatioChangeEvent.getVoltageRatio()));
-		}
-	}
-
 	class VoltageRatioInputSensorChangeEventHandler implements Runnable {
 		Phidget ch;
 		VoltageRatioInputSensorChangeEvent sensorChangeEvent;
@@ -442,6 +428,21 @@ public class VoltageRatioInputExample extends Activity {
 
 			sensorValueTxt.setText(String.valueOf(sensorChangeEvent.getSensorValue()));
 			sensorUnits.setText(sensorChangeEvent.getSensorUnit().symbol);
+		}
+	}
+
+	class RCServoPositionChangeEventHandler implements Runnable {
+		Phidget ch;
+		RCServoPositionChangeEvent positionChangeEvent;
+
+		public RCServoPositionChangeEventHandler(Phidget ch, RCServoPositionChangeEvent positionChangeEvent) {
+			this.ch = ch;
+			this.positionChangeEvent = positionChangeEvent;
+		}
+
+		public void run() {
+			DecimalFormat numberFormat = new DecimalFormat("#.##");
+			System.out.println("RC Position "+ positionChangeEvent.getPosition());
 		}
 	}
 
@@ -513,6 +514,10 @@ public class VoltageRatioInputExample extends Activity {
 
 						System.out.println(voltageRatioChangeEvent.getVoltageRatio());
 
+						if(voltageRatioChangeEvent.getVoltageRatio() > 0.8) {
+							setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
+						}
+
 					}
 				});
 
@@ -529,6 +534,66 @@ public class VoltageRatioInputExample extends Activity {
 			}
 		}
 	}
+
+
+	public void setServoMotor (double e  ) {
+
+
+			//servo motor
+		    // TODOS:  values -  0 - 180 where  0 ~ 0.8+ 180 ~ <0.1
+
+			try{
+				ch3 = new RCServo();
+				ch3.setIsRemote(true);
+				ch3.setDeviceSerialNumber(30686);
+				ch3.setChannel(6);
+				ch3.setEngaged(true);
+
+				//set position
+
+				ch3.setTargetPosition(e);
+
+
+				ch3.addAttachListener(new AttachListener() {
+					public void onAttach(final AttachEvent attachEvent) {
+						AttachEventHandler handler = new AttachEventHandler(ch3);
+						runOnUiThread(handler);
+					}
+				});
+
+				ch3.addDetachListener(new DetachListener() {
+					public void onDetach(final DetachEvent detachEvent) {
+						DetachEventHandler handler = new DetachEventHandler(ch3);
+						runOnUiThread(handler);
+
+					}
+				});
+
+				ch3.addErrorListener(new ErrorListener() {
+					public void onError(final ErrorEvent errorEvent) {
+						ErrorEventHandler handler = new ErrorEventHandler(ch3, errorEvent);
+						runOnUiThread(handler);
+
+					}
+				});
+
+
+
+
+				ch3.addPositionChangeListener(new RCServoPositionChangeListener() {
+					public void onPositionChange(RCServoPositionChangeEvent positionChangeEvent) {
+						RCServoPositionChangeEventHandler handler = new RCServoPositionChangeEventHandler(ch3, positionChangeEvent);
+						runOnUiThread(handler);
+					}
+				});
+
+
+				ch3.open();
+			} catch (PhidgetException pe) {
+				pe.printStackTrace();
+			}
+		}
+
 
 }
 
