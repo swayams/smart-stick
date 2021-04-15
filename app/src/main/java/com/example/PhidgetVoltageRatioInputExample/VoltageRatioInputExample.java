@@ -30,8 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static android.content.ContentValues.TAG;
-
 public class VoltageRatioInputExample extends Activity {
 
 	VoltageRatioInput ch;
@@ -55,7 +53,6 @@ public class VoltageRatioInputExample extends Activity {
 	float mLowPassX ;
 	float mLowPassY ;
 	float mLowPassZ ;
-	float mLowPassi;
 
 	/** Called when the activity is first created. */
 	@Override
