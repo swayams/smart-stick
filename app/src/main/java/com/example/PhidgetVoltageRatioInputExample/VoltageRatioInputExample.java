@@ -4,7 +4,10 @@ package com.example.PhidgetVoltageRatioInputExample;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -15,14 +18,19 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.os.Vibrator;
+import android.speech.tts.TextToSpeech;
 
 import com.phidget22.*;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-
+import static android.content.ContentValues.TAG;
 
 public class VoltageRatioInputExample extends Activity {
 
@@ -30,17 +38,24 @@ public class VoltageRatioInputExample extends Activity {
 	VoltageRatioInput ch2;
 	RCServo ch3;
 
+	SensorManager sensorManager;
+	Sensor Gyrosensor;
 	SeekBar dataIntervalBar;
 	Spinner sensorTypeSpinner;
 	Spinner bridgeGainSpinner;
 	CheckBox bridgeEnabledBox;
 	CheckBox isHubPortBox;
-
+	TextToSpeech tts;
+	String text;
 	boolean isHubPort;
-
 	Toast errToast;
-
+	public Vibrator v;
 	int minDataInterval;
+	float a = 0.1f;
+	float mLowPassX ;
+	float mLowPassY ;
+	float mLowPassZ ;
+	float mLowPassi;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -51,6 +66,10 @@ public class VoltageRatioInputExample extends Activity {
 		//Hide device information and settings until one is attached
 		LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
 		settingsAndData.setVisibility(LinearLayout.GONE);
+
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
 
 		//set data interval seek bar functionality
 		dataIntervalBar = (SeekBar) findViewById(R.id.dataIntervalBar);
@@ -101,9 +120,6 @@ public class VoltageRatioInputExample extends Activity {
 			ch.setIsRemote(true);
 			ch.setChannel(4);
 			ch.setDeviceSerialNumber(30686);
-
-
-
 
 
 			//Remember isHubPort setting
@@ -164,6 +180,27 @@ public class VoltageRatioInputExample extends Activity {
 			pe.printStackTrace();
 		}
 
+		tts=new TextToSpeech(VoltageRatioInputExample.this, new TextToSpeech.OnInitListener() {
+
+			@Override
+			public void onInit(int status) {
+				// TODO Auto-generated method stub
+				if(status == TextToSpeech.SUCCESS){
+					int result=tts.setLanguage(Locale.US);
+					if(result==TextToSpeech.LANG_MISSING_DATA ||
+							result==TextToSpeech.LANG_NOT_SUPPORTED){
+						android.util.Log.e("error", "This Language is not supported");
+					}
+					else{
+						text = "Start Walking no traffic";
+						tts.setLanguage(Locale.US);
+						tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+					}
+				}
+				else
+					Log.e("error", "Initilization Failed!");
+			}
+		});
 	}
 
 	private class dataIntervalChangeListener implements SeekBar.OnSeekBarChangeListener {
@@ -594,6 +631,77 @@ public class VoltageRatioInputExample extends Activity {
 			}
 		}
 
+	@Override
+	protected void onPause() {
+		// TODO Auto-generated method stub
+		if(tts != null){
+			tts.stop();
+			tts.shutdown();
+		}
+		super.onPause();
+	}
 
+	private void ConvertTextToSpeech() {
+		// TODO Auto-generated method stub
+		text = "Please turn right there is traffic this side";
+		tts.setLanguage(Locale.US);
+		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+	}
+
+	public void onResume() {
+		super.onResume();
+		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
+	}
+
+	public void onStop() {
+		super.onStop();
+		sensorManager.unregisterListener(gyroListener);
+	}
+
+	public SensorEventListener gyroListener = new SensorEventListener() {
+		public void onAccuracyChanged(Sensor sensor, int acc) {
+		}
+
+		public void onSensorChanged(SensorEvent event) {
+
+//			float[] rotationMatrix = new float[16];
+//			sensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+//			float[] remappedRotationMatrix = new float[16];
+//			sensorManager.remapCoordinateSystem(rotationMatrix, sensorManager.AXIS_X, sensorManager.AXIS_Z, remappedRotationMatrix);
+//
+//			float[] orientations = new float[3];
+//			sensorManager.getOrientation(remappedRotationMatrix, orientations);
+//
+//			// Convert values in radian to degrees
+//			for (int i = 0; i < 3; i++) {
+//				orientations[i] = (float) (Math.toDegrees(orientations[i]));
+//				System.out.println(orientations[i]);
+//				mLowPassi = lowpass(orientations[i],mLowPassi);
+//			}
+
+			float x = event.values[0];
+			float y = event.values[1];
+			float z = event.values[2];
+			mLowPassX = lowpass(x,mLowPassX);
+			mLowPassY = lowpass(y,mLowPassY);
+			mLowPassZ = lowpass(z,mLowPassZ);
+
+			System.out.println("X : " + (int) Math.toDegrees(mLowPassX) + " degrees");
+			System.out.println("Y : " + (int) Math.toDegrees(mLowPassY) + " degrees");
+			System.out.println("Z : " + (int) Math.toDegrees(mLowPassZ) + " degrees");
+
+			if(y > 45) {
+				ConvertTextToSpeech();
+				v.vibrate(50);
+			}
+
+		}
+
+	};
+
+	float lowpass(float current ,float last ){
+
+	return last * (1.0f - a) + current*a;
+	}
 }
 
