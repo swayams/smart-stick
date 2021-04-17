@@ -1,5 +1,5 @@
 // Search CSCM79 Advice for test modification
-package com.example.PhidgetVoltageRatioInputExample;
+package com.example.SmartPhidgetStick;
 
 import android.app.Activity;
 import android.content.Context;
@@ -8,15 +8,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -26,13 +17,9 @@ import android.speech.tts.TextToSpeech;
 import com.phidget22.*;
 
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
-
 import static java.lang.Thread.sleep;
-
-public class VoltageRatioInputExample extends Activity {
+public class SmartPhidgetStick extends Activity {
 
 	VoltageRatioInput ch;
 	VoltageRatioInput ch2;
@@ -40,17 +27,11 @@ public class VoltageRatioInputExample extends Activity {
 
 	SensorManager sensorManager;
 	Sensor Gyrosensor;
-	SeekBar dataIntervalBar;
-	Spinner sensorTypeSpinner;
-	Spinner bridgeGainSpinner;
-	CheckBox bridgeEnabledBox;
-	CheckBox isHubPortBox;
+	boolean isHubPort;
 	TextToSpeech tts;
 	String text;
-	boolean isHubPort;
 	Toast errToast;
 	public Vibrator v;
-	int minDataInterval;
 	float a = 0.1f;
 	float mLowPassX ;
 	float mLowPassY ;
@@ -62,41 +43,13 @@ public class VoltageRatioInputExample extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-		//Hide device information and settings until one is attached
-		LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
-		settingsAndData.setVisibility(LinearLayout.GONE);
+	
 
 //		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 //		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 //		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
 
-		//set data interval seek bar functionality
-		dataIntervalBar = (SeekBar) findViewById(R.id.dataIntervalBar);
-		dataIntervalBar.setOnSeekBarChangeListener(new dataIntervalChangeListener());
 
-		//set sensor type spinner functionality
-		sensorTypeSpinner = (Spinner) findViewById(R.id.sensorTypeSpinner);
-		sensorTypeSpinner.setOnItemSelectedListener(new sensorTypeChangeListener());
-		LinearLayout sensorTypeSection = (LinearLayout) findViewById(R.id.sensorTypeSection);
-		sensorTypeSection.setVisibility(LinearLayout.GONE);
-
-		//set bridge gain spinner functionality
-		bridgeGainSpinner = (Spinner) findViewById(R.id.bridgeGainSpinner);
-		bridgeGainSpinner.setOnItemSelectedListener(new bridgeGainChangeListener());
-		LinearLayout bridgeSection = (LinearLayout) findViewById(R.id.bridgeSection);
-		bridgeSection.setVisibility(LinearLayout.GONE);
-
-		//set up bridge enabled functionality
-		bridgeEnabledBox = (CheckBox) findViewById(R.id.bridgeEnabledBox);
-		bridgeEnabledBox.setOnCheckedChangeListener(new bridgeEnabledChangeListener());
-
-		//Voltage ratio visible and sensor value not by default
-		((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.VISIBLE);
-		((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.GONE);
-
-		//set up "is hub port" functionality
-		isHubPortBox = (CheckBox) findViewById(R.id.isHubPortBox);
-		isHubPortBox.setOnCheckedChangeListener(new isHubPortChangeListener());
 
 		try
 		{
@@ -157,7 +110,7 @@ public class VoltageRatioInputExample extends Activity {
 
 			ch.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-
+					//change to pressure sensor not joystick
 //					  VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch, voltageRatioChangeEvent);
 					System.out.println("Pressure ( > 0.7 )  " + voltageRatioChangeEvent.getVoltageRatio());
 					getDistanceSensor(voltageRatioChangeEvent.getVoltageRatio());
@@ -179,7 +132,7 @@ public class VoltageRatioInputExample extends Activity {
 			pe.printStackTrace();
 		}
 
-		tts=new TextToSpeech(VoltageRatioInputExample.this, new TextToSpeech.OnInitListener() {
+		tts=new TextToSpeech(SmartPhidgetStick.this, new TextToSpeech.OnInitListener() {
 
 			@Override
 			public void onInit(int status) {
@@ -190,102 +143,12 @@ public class VoltageRatioInputExample extends Activity {
 							result==TextToSpeech.LANG_NOT_SUPPORTED){
 						android.util.Log.e("error", "This Language is not supported");
 					}
-					else{
-						text = "Start Walking no traffic";
-						tts.setLanguage(Locale.US);
-						tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
-					}
+
 				}
 				else
 					Log.e("error", "Initilization Failed!");
 			}
 		});
-	}
-
-	private class dataIntervalChangeListener implements SeekBar.OnSeekBarChangeListener {
-		public void onProgressChanged(SeekBar seekBar, int progress,
-									  boolean fromUser) {
-			try {
-				TextView dataIntervalTxt = (TextView) findViewById(R.id.dataIntervalTxt);
-				int dataInterval = progress + minDataInterval;
-				dataIntervalTxt.setText(String.valueOf(dataInterval));
-				ch.setDataInterval(dataInterval);
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
-		}
-
-		public void onStartTrackingTouch(SeekBar seekBar) {}
-
-		public void onStopTrackingTouch(SeekBar seekBar) {}
-	}
-
-	private class sensorTypeChangeListener implements Spinner.OnItemSelectedListener {
-		@Override
-		public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-			try {
-				ch.setSensorType(VoltageRatioSensorType.valueOf(parentView.getItemAtPosition(position).toString()));
-				if(VoltageRatioSensorType.valueOf(parentView.getItemAtPosition(position).toString()) == VoltageRatioSensorType.VOLTAGE_RATIO) {
-					((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.VISIBLE);
-					((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.GONE);
-				} else {
-					((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.GONE);
-					((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.VISIBLE);
-				}
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
-		}
-
-		@Override
-		public void onNothingSelected(AdapterView<?> parentView) {
-			// your code here
-		}
-
-	}
-
-	private class bridgeGainChangeListener implements Spinner.OnItemSelectedListener {
-		@Override
-		public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-			try {
-				ch.setBridgeGain(BridgeGain.valueOf(parentView.getItemAtPosition(position).toString()));
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
-		}
-
-		@Override
-		public void onNothingSelected(AdapterView<?> parentView) {
-			// your code here
-		}
-
-	}
-
-	private class bridgeEnabledChangeListener implements CheckBox.OnCheckedChangeListener {
-		@Override
-		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
-		{
-			try {
-				ch.setBridgeEnabled(isChecked);
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private class isHubPortChangeListener implements CheckBox.OnCheckedChangeListener {
-		@Override
-		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
-		{
-			try {
-				runOnUiThread(new DetachEventHandler(ch));
-				ch.close();
-				ch.setIsHubPortDevice(isChecked);
-				ch.open();
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
 	class AttachEventHandler implements Runnable {
@@ -296,97 +159,11 @@ public class VoltageRatioInputExample extends Activity {
 		}
 
 		public void run() {
-			LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
-			settingsAndData.setVisibility(LinearLayout.VISIBLE);
-
-			TextView attachedTxt = (TextView) findViewById(R.id.attachedTxt);
-
-			attachedTxt.setText("Attached");
-
-			try {
-				TextView nameTxt = (TextView) findViewById(R.id.nameTxt);
-				TextView serialTxt = (TextView) findViewById(R.id.serialTxt);
-				TextView versionTxt = (TextView) findViewById(R.id.versionTxt);
-				TextView channelTxt = (TextView) findViewById(R.id.channelTxt);
-				TextView hubPortTxt = (TextView) findViewById(R.id.hubPortTxt);
-				TextView labelTxt = (TextView) findViewById(R.id.labelTxt);
-
-				nameTxt.setText(ch.getDeviceName());
-				serialTxt.setText(Integer.toString(ch.getDeviceSerialNumber()));
-				versionTxt.setText(Integer.toString(ch.getDeviceVersion()));
-				channelTxt.setText(Integer.toString(ch.getChannel()));
-				hubPortTxt.setText(Integer.toString(ch.getHubPort()));
-				labelTxt.setText(ch.getDeviceLabel());
-
-				TextView dataIntervalTxt = (TextView) findViewById(R.id.dataIntervalTxt);
-				dataIntervalTxt.setText(String.valueOf(((VoltageRatioInput)ch).getDataInterval()));
-
-				minDataInterval = ((VoltageRatioInput)ch).getMinDataInterval();
-
-				SeekBar dataIntervalBar = (SeekBar) findViewById(R.id.dataIntervalBar);
-				dataIntervalBar.setProgress(((VoltageRatioInput)ch).getDataInterval() - minDataInterval);
-
-				//Limit the maximum dataInterval on the SeekBar to 5000 so it remains usable
-				if(((VoltageRatioInput)ch).getMaxDataInterval() >= 5000)
-					dataIntervalBar.setMax(5000 - minDataInterval);
-				else
-					dataIntervalBar.setMax(((VoltageRatioInput)ch).getMaxDataInterval() - minDataInterval);
-
-				List<BridgeGain> supportedBridgeGains;
-				switch (ch.getChannelSubclass()) { //initialize form elements based on detected device
-					case VOLTAGE_RATIO_INPUT_BRIDGE:
-						if(ch.getDeviceID() == DeviceID.PN_1046) {
-							supportedBridgeGains = new ArrayList<BridgeGain>();
-							supportedBridgeGains.add(BridgeGain.GAIN_1X);
-							supportedBridgeGains.add(BridgeGain.GAIN_8X);
-							supportedBridgeGains.add(BridgeGain.GAIN_16X);
-							supportedBridgeGains.add(BridgeGain.GAIN_32X);
-							supportedBridgeGains.add(BridgeGain.GAIN_64X);
-							supportedBridgeGains.add(BridgeGain.GAIN_128X);
-
-							bridgeGainSpinner.setAdapter(new ArrayAdapter<BridgeGain>(getApplicationContext(),
-									android.R.layout.simple_spinner_item, supportedBridgeGains));
-
-							//128x by default
-							bridgeGainSpinner.setSelection(5);
-						} else { //PN_DAQ1500:
-							supportedBridgeGains = new ArrayList<BridgeGain>();
-							supportedBridgeGains.add(BridgeGain.GAIN_1X);
-							supportedBridgeGains.add(BridgeGain.GAIN_2X);
-							supportedBridgeGains.add(BridgeGain.GAIN_64X);
-							supportedBridgeGains.add(BridgeGain.GAIN_128X);
-
-							bridgeGainSpinner.setAdapter(new ArrayAdapter<BridgeGain>(getApplicationContext(),
-									android.R.layout.simple_spinner_item, supportedBridgeGains));
-
-							//128x by default
-							bridgeGainSpinner.setSelection(3);
-						}
-
-						((CheckBox)findViewById(R.id.bridgeEnabledBox)).setChecked(((VoltageRatioInput)ch).getBridgeEnabled());
-
-						((LinearLayout)findViewById(R.id.bridgeSection)).setVisibility(LinearLayout.VISIBLE);
-						break;
-
-					default: //standard 5V sensor port
-						if (ch.getChannelSubclass() == ChannelSubclass.VOLTAGE_RATIO_INPUT_SENSOR_PORT) {
-							sensorTypeSpinner.setAdapter(new ArrayAdapter<VoltageRatioSensorType>(getApplicationContext(),
-									android.R.layout.simple_spinner_item, VoltageRatioSensorType.values()));
-
-							//VoltageRatio Sensor by default
-							sensorTypeSpinner.setSelection(0);
-
-							((LinearLayout) findViewById(R.id.sensorTypeSection)).setVisibility(LinearLayout.VISIBLE);
-						}
-						break;
-				}
-			} catch (PhidgetException e) {
-				e.printStackTrace();
-			}
+			// remove all keep only print System.out.println("Attached");
+			System.out.println("Attached");
 
 		}
 	}
-
 	class DetachEventHandler implements Runnable {
 		Phidget ch;
 
@@ -395,38 +172,8 @@ public class VoltageRatioInputExample extends Activity {
 		}
 
 		public void run() {
-			LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
-
-			settingsAndData.setVisibility(LinearLayout.GONE);
-
-			TextView attachedTxt = (TextView) findViewById(R.id.attachedTxt);
-			attachedTxt.setText("Detached");
-
-			TextView nameTxt = (TextView) findViewById(R.id.nameTxt);
-			TextView serialTxt = (TextView) findViewById(R.id.serialTxt);
-			TextView versionTxt = (TextView) findViewById(R.id.versionTxt);
-			TextView channelTxt = (TextView) findViewById(R.id.channelTxt);
-			TextView hubPortTxt = (TextView) findViewById(R.id.hubPortTxt);
-			TextView labelTxt = (TextView) findViewById(R.id.labelTxt);
-
-			nameTxt.setText(R.string.unknown_val);
-			serialTxt.setText(R.string.unknown_val);
-			versionTxt.setText(R.string.unknown_val);
-			channelTxt.setText(R.string.unknown_val);
-			hubPortTxt.setText(R.string.unknown_val);
-			labelTxt.setText(R.string.unknown_val);
-
-			((LinearLayout)findViewById(R.id.sensorTypeSection)).setVisibility(LinearLayout.GONE);
-			((LinearLayout)findViewById(R.id.bridgeSection)).setVisibility(LinearLayout.GONE);
-
-			//reset voltage ratio visibility
-			((LinearLayout) findViewById(R.id.voltageRatioInfo)).setVisibility(LinearLayout.VISIBLE);
-			((LinearLayout) findViewById(R.id.sensorInfo)).setVisibility(LinearLayout.GONE);
-
-			//clear voltage ratio information
-			((TextView)findViewById(R.id.voltageRatioTxt)).setText("");
-			((TextView)findViewById(R.id.sensorValueTxt)).setText("");
-			((TextView)findViewById(R.id.sensorUnits)).setText("");
+			// remove all keep only print System.out.println("Detached");
+			System.out.println("Detached");
 		}
 	}
 
@@ -459,11 +206,8 @@ public class VoltageRatioInputExample extends Activity {
 		}
 
 		public void run() {
-			TextView sensorValueTxt = (TextView)findViewById(R.id.sensorValueTxt);
-			TextView sensorUnits = (TextView)findViewById(R.id.sensorUnits);
-
-			sensorValueTxt.setText(String.valueOf(sensorChangeEvent.getSensorValue()));
-			sensorUnits.setText(sensorChangeEvent.getSensorUnit().symbol);
+			// remove and put System.out.println(sensorChangeEvent.getSensorValue());
+			System.out.println(sensorChangeEvent.getSensorValue());
 		}
 	}
 
@@ -504,12 +248,9 @@ public class VoltageRatioInputExample extends Activity {
 			com.phidget22.usb.Manager.Uninitialize();
 	}
 
-
 	public void getDistanceSensor (double e ) {
 		if(e > 0.7) {
-
 			//distance
-
 			try{
 				ch2 = new VoltageRatioInput();
 				ch2.setIsRemote(true);
@@ -540,8 +281,6 @@ public class VoltageRatioInputExample extends Activity {
 					}
 				});
 
-
-
 				ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 					public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
 //
@@ -552,8 +291,10 @@ public class VoltageRatioInputExample extends Activity {
 
 						if(voltageRatioChangeEvent.getVoltageRatio() < 0.3) {
 							setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
+							// if the distance is close call the gyroscope
+//							sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+//							Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 						}
-
 					}
 				});
 
@@ -573,9 +314,11 @@ public class VoltageRatioInputExample extends Activity {
 	}
 
 
-	public void setServoMotor (double e  ) {
-
-
+	public void setServoMotor (double e) {
+//set position of servomotor from the gyroscope so it is called inside the gyroscope function
+//		float x = 180;
+//		float y = 90;
+//		float z = 0;
 			//servo motor
 		    // TODOS:  values -  0 - 180 where  0 ~ 0.8+ 180 ~ <0.1
 
@@ -624,9 +367,6 @@ public class VoltageRatioInputExample extends Activity {
 					}
 				});
 
-
-
-
 				ch3.addPositionChangeListener(new RCServoPositionChangeListener() {
 					public void onPositionChange(RCServoPositionChangeEvent positionChangeEvent) {
 						RCServoPositionChangeEventHandler handler = new RCServoPositionChangeEventHandler(ch3, positionChangeEvent);
@@ -650,11 +390,11 @@ public class VoltageRatioInputExample extends Activity {
 			tts.shutdown();
 		}
 		super.onPause();
-	}
+	} //voice commands
 
-	private void ConvertTextToSpeech() {
+	private void StopObstacle() {
 		// TODO Auto-generated method stub
-		text = "Please turn right there is traffic this side";
+		text = "Please stop there is an obstecale this side";
 		tts.setLanguage(Locale.US);
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
@@ -669,6 +409,8 @@ public class VoltageRatioInputExample extends Activity {
 //		sensorManager.unregisterListener(gyroListener);
 //	}
 
+// gyroscope listener is initialized inside the distance ch2 where if there is an obstacle
+// it will get orientation readings and then send it to motor
 	public SensorEventListener gyroListener = new SensorEventListener() {
 		public void onAccuracyChanged(Sensor sensor, int acc) {
 		}
@@ -689,7 +431,6 @@ public class VoltageRatioInputExample extends Activity {
 //				System.out.println(orientations[i]);
 //				mLowPassi = lowpass(orientations[i],mLowPassi);
 //			}
-
 			float x = event.values[0];
 			float y = event.values[1];
 			float z = event.values[2];
@@ -700,16 +441,15 @@ public class VoltageRatioInputExample extends Activity {
 			System.out.println("X : " + (int) Math.toDegrees(mLowPassX) + " degrees");
 			System.out.println("Y : " + (int) Math.toDegrees(mLowPassY) + " degrees");
 			System.out.println("Z : " + (int) Math.toDegrees(mLowPassZ) + " degrees");
-
-			if(y > 45) {
-				ConvertTextToSpeech();
+//			setServoMotor (mLowPassX, mLowPassY,mLowPassZ );
+			if (y > 45){
+				StopObstacle();
 				v.vibrate(50);
 			}
-
 		}
-
 	};
 
+// filter function for the orientation readings in gyroscope
 	float lowpass(float current ,float last ){
 
 	return last * (1.0f - a) + current*a;
