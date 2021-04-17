@@ -18,6 +18,8 @@ import com.phidget22.*;
 
 import java.text.DecimalFormat;
 import java.util.Locale;
+
+import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
 public class SmartPhidgetStick extends Activity {
 
@@ -36,6 +38,9 @@ public class SmartPhidgetStick extends Activity {
 	float mLowPassX ;
 	float mLowPassY ;
 	float mLowPassZ ;
+
+	int servoValue = 0;
+	float[] distanceArray = {};
 
 	/** Called when the activity is first created. */
 	@Override
@@ -72,6 +77,7 @@ public class SmartPhidgetStick extends Activity {
 			ch.setIsRemote(true);
 			ch.setChannel(0);
 			ch.setDeviceSerialNumber(39830);
+			//ch.setDataInterval(3000);
 
 
 			//Remember isHubPort setting
@@ -112,7 +118,7 @@ public class SmartPhidgetStick extends Activity {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
 					//change to pressure sensor not joystick
 //					  VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch, voltageRatioChangeEvent);
-					System.out.println("Pressure ( > 0.7 )  " + voltageRatioChangeEvent.getVoltageRatio());
+					//System.out.println("Pressure ( > 0.7 )  " + voltageRatioChangeEvent.getVoltageRatio());
 					getDistanceSensor(voltageRatioChangeEvent.getVoltageRatio());
 //					  runOnUiThread(handler);
 
@@ -126,7 +132,7 @@ public class SmartPhidgetStick extends Activity {
 				}
 			});
 
-			ch.open();
+			ch.open(500);
 
 		} catch (PhidgetException pe) {
 			pe.printStackTrace();
@@ -256,7 +262,8 @@ public class SmartPhidgetStick extends Activity {
 				ch2.setIsRemote(true);
 				ch2.setDeviceSerialNumber(39830);
 				ch2.setChannel(3);
-
+                //ch2.setDataInterval(2000);
+				sleep (3000);
 
 				ch2.addAttachListener(new AttachListener() {
 					public void onAttach(final AttachEvent attachEvent) {
@@ -289,12 +296,7 @@ public class SmartPhidgetStick extends Activity {
 
 						System.out.println("Distance ( < 0.3 ) " + voltageRatioChangeEvent.getVoltageRatio());
 
-						if(voltageRatioChangeEvent.getVoltageRatio() < 0.3) {
-							setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
-							// if the distance is close call the gyroscope
-//							sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-//							Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-						}
+						setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
 					}
 				});
 
@@ -305,80 +307,80 @@ public class SmartPhidgetStick extends Activity {
 					}
 				});
 
-				ch2.open();
+				ch2.open(5000);
 				
 			} catch (PhidgetException pe) {
 				pe.printStackTrace();
+			} catch (InterruptedException interruptedException) {
+				interruptedException.printStackTrace();
 			}
 		}
 	}
 
 
 	public void setServoMotor (double e) {
-//set position of servomotor from the gyroscope so it is called inside the gyroscope function
-//		float x = 180;
-//		float y = 90;
-//		float z = 0;
-			//servo motor
-		    // TODOS:  values -  0 - 180 where  0 ~ 0.8+ 180 ~ <0.1
+
+			if(e < 0.15) {
+				try{
+					ch3 = new RCServo();
+					ch3.setIsRemote(true);
+					ch3.setDeviceSerialNumber(19875);
+					ch3.setChannel(0);
+                    //ch3.setDataInterval(2000);
+					ch3.open(500);
 
 
-			try{
-				ch3 = new RCServo();
-				ch3.setIsRemote(true);
-				ch3.setDeviceSerialNumber(19875);
-				ch3.setChannel(0);
-
-				ch3.open(2000);
-
-
-				//set position
-
-				ch3.setTargetPosition(180);
-				ch3.setEngaged(true);
-				sleep(2000);
-				ch3.setTargetPosition(90);
-				ch3.setEngaged(true);
-
-				ch3.close();
-
-
-
-				ch3.addAttachListener(new AttachListener() {
-					public void onAttach(final AttachEvent attachEvent) {
-						AttachEventHandler handler = new AttachEventHandler(ch3);
-						runOnUiThread(handler);
+					//set position
+					if(servoValue != 180 ) {
+						servoValue += 45;
+					} else {
+						servoValue = 0;
 					}
-				});
 
-				ch3.addDetachListener(new DetachListener() {
-					public void onDetach(final DetachEvent detachEvent) {
-						DetachEventHandler handler = new DetachEventHandler(ch3);
-						runOnUiThread(handler);
+					ch3.setTargetPosition(servoValue);
+					ch3.setEngaged(true);
 
-					}
-				});
+					sleep(3000);
 
-				ch3.addErrorListener(new ErrorListener() {
-					public void onError(final ErrorEvent errorEvent) {
-						ErrorEventHandler handler = new ErrorEventHandler(ch3, errorEvent);
-						runOnUiThread(handler);
+					//  0 - 90, 1 - 45,  2 - 0, 3 - 135, 4 - 180
+					System.out.println("current servo motor positon " + servoValue + " thread: " + currentThread().getId());
+					ch3.setEngaged(true);
+					ch3.addAttachListener(new AttachListener() {
+						public void onAttach(final AttachEvent attachEvent) {
+							AttachEventHandler handler = new AttachEventHandler(ch3);
+							runOnUiThread(handler);
+						}
+					});
 
-					}
-				});
+					ch3.addDetachListener(new DetachListener() {
+						public void onDetach(final DetachEvent detachEvent) {
+							DetachEventHandler handler = new DetachEventHandler(ch3);
+							runOnUiThread(handler);
 
-				ch3.addPositionChangeListener(new RCServoPositionChangeListener() {
-					public void onPositionChange(RCServoPositionChangeEvent positionChangeEvent) {
-						RCServoPositionChangeEventHandler handler = new RCServoPositionChangeEventHandler(ch3, positionChangeEvent);
-						runOnUiThread(handler);
-					}
-				});
+						}
+					});
+
+					ch3.addErrorListener(new ErrorListener() {
+						public void onError(final ErrorEvent errorEvent) {
+							ErrorEventHandler handler = new ErrorEventHandler(ch3, errorEvent);
+							runOnUiThread(handler);
+
+						}
+					});
+
+					ch3.addPositionChangeListener(new RCServoPositionChangeListener() {
+						public void onPositionChange(RCServoPositionChangeEvent positionChangeEvent) {
+							RCServoPositionChangeEventHandler handler = new RCServoPositionChangeEventHandler(ch3, positionChangeEvent);
+							runOnUiThread(handler);
+						}
+					});
 
 
-			} catch (PhidgetException pe) {
-				pe.printStackTrace();
-			} catch (InterruptedException interruptedException) {
-				interruptedException.printStackTrace();
+				} catch (PhidgetException pe) {
+					pe.printStackTrace();
+				} catch (InterruptedException interruptedException) {
+					interruptedException.printStackTrace();
+				}
 			}
 	}
 
