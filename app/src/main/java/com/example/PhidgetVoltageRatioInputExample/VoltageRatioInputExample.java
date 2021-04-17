@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static java.lang.Thread.sleep;
+
 public class VoltageRatioInputExample extends Activity {
 
 	VoltageRatioInput ch;
@@ -64,9 +66,9 @@ public class VoltageRatioInputExample extends Activity {
 		LinearLayout settingsAndData = (LinearLayout) findViewById(R.id.settingsAndData);
 		settingsAndData.setVisibility(LinearLayout.GONE);
 
-		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
+//		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+//		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+//		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
 
 		//set data interval seek bar functionality
 		dataIntervalBar = (SeekBar) findViewById(R.id.dataIntervalBar);
@@ -115,8 +117,8 @@ public class VoltageRatioInputExample extends Activity {
 			//CSCM79 Advice
 			//Set addressing parameters to specify which channel to open (if any)
 			ch.setIsRemote(true);
-			ch.setChannel(4);
-			ch.setDeviceSerialNumber(30686);
+			ch.setChannel(0);
+			ch.setDeviceSerialNumber(39830);
 
 
 			//Remember isHubPort setting
@@ -157,7 +159,7 @@ public class VoltageRatioInputExample extends Activity {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
 
 //					  VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch, voltageRatioChangeEvent);
-					System.out.println("Joystick " + voltageRatioChangeEvent.getVoltageRatio());
+					System.out.println("Pressure ( > 0.7 )  " + voltageRatioChangeEvent.getVoltageRatio());
 					getDistanceSensor(voltageRatioChangeEvent.getVoltageRatio());
 //					  runOnUiThread(handler);
 
@@ -511,7 +513,7 @@ public class VoltageRatioInputExample extends Activity {
 			try{
 				ch2 = new VoltageRatioInput();
 				ch2.setIsRemote(true);
-				ch2.setDeviceSerialNumber(30686);
+				ch2.setDeviceSerialNumber(39830);
 				ch2.setChannel(3);
 
 
@@ -546,9 +548,9 @@ public class VoltageRatioInputExample extends Activity {
 //						VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch2, voltageRatioChangeEvent);
 //						runOnUiThread(handler);
 
-						System.out.println(voltageRatioChangeEvent.getVoltageRatio());
+						System.out.println("Distance ( < 0.3 ) " + voltageRatioChangeEvent.getVoltageRatio());
 
-						if(voltageRatioChangeEvent.getVoltageRatio() > 0.8) {
+						if(voltageRatioChangeEvent.getVoltageRatio() < 0.3) {
 							setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
 						}
 
@@ -563,6 +565,7 @@ public class VoltageRatioInputExample extends Activity {
 				});
 
 				ch2.open();
+				
 			} catch (PhidgetException pe) {
 				pe.printStackTrace();
 			}
@@ -576,16 +579,26 @@ public class VoltageRatioInputExample extends Activity {
 			//servo motor
 		    // TODOS:  values -  0 - 180 where  0 ~ 0.8+ 180 ~ <0.1
 
+
 			try{
 				ch3 = new RCServo();
 				ch3.setIsRemote(true);
-				ch3.setDeviceSerialNumber(30686);
-				ch3.setChannel(6);
-				ch3.setEngaged(true);
+				ch3.setDeviceSerialNumber(19875);
+				ch3.setChannel(0);
+
+				ch3.open(2000);
+
 
 				//set position
 
-				ch3.setTargetPosition(e);
+				ch3.setTargetPosition(180);
+				ch3.setEngaged(true);
+				sleep(2000);
+				ch3.setTargetPosition(90);
+				ch3.setEngaged(true);
+
+				ch3.close();
+
 
 
 				ch3.addAttachListener(new AttachListener() {
@@ -622,11 +635,12 @@ public class VoltageRatioInputExample extends Activity {
 				});
 
 
-				ch3.open();
 			} catch (PhidgetException pe) {
 				pe.printStackTrace();
+			} catch (InterruptedException interruptedException) {
+				interruptedException.printStackTrace();
 			}
-		}
+	}
 
 	@Override
 	protected void onPause() {
@@ -645,15 +659,15 @@ public class VoltageRatioInputExample extends Activity {
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
 
-	public void onResume() {
-		super.onResume();
-		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
-	}
-
-	public void onStop() {
-		super.onStop();
-		sensorManager.unregisterListener(gyroListener);
-	}
+//	public void onResume() {
+//		super.onResume();
+//		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
+//	}
+//
+//	public void onStop() {
+//		super.onStop();
+//		sensorManager.unregisterListener(gyroListener);
+//	}
 
 	public SensorEventListener gyroListener = new SensorEventListener() {
 		public void onAccuracyChanged(Sensor sensor, int acc) {
