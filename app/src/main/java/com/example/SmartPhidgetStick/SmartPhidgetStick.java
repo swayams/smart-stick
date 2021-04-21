@@ -48,17 +48,16 @@ public class SmartPhidgetStick extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 
-	
-
-//		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-//		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-//		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
-
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		Gyrosensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+		v = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
 
 
 		try
 		{
 			ch = new VoltageRatioInput();
+			ch2 = new VoltageRatioInput();
+			ch3 = new RCServo();
 
 			//Allow direct USB connection of Phidgets
 			if(getPackageManager().hasSystemFeature(PackageManager.FEATURE_USB_HOST))
@@ -77,8 +76,14 @@ public class SmartPhidgetStick extends Activity {
 			ch.setIsRemote(true);
 			ch.setChannel(0);
 			ch.setDeviceSerialNumber(39830);
-			//ch.setDataInterval(3000);
 
+			ch2.setIsRemote(true);
+			ch2.setDeviceSerialNumber(39830);
+			ch2.setChannel(3);
+
+			ch3.setIsRemote(true);
+			ch3.setDeviceSerialNumber(19875);
+			ch3.setChannel(0);
 
 			//Remember isHubPort setting
 			if (savedInstanceState != null) {
@@ -112,8 +117,6 @@ public class SmartPhidgetStick extends Activity {
 				}
 			});
 
-
-
 			ch.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
 					//change to pressure sensor not joystick
@@ -133,6 +136,8 @@ public class SmartPhidgetStick extends Activity {
 			});
 
 			ch.open(500);
+			ch2.open(500);
+			ch3.open(500);
 
 		} catch (PhidgetException pe) {
 			pe.printStackTrace();
@@ -244,6 +249,8 @@ public class SmartPhidgetStick extends Activity {
 		super.onDestroy();
 		try {
 			ch.close();
+			ch2.close();
+			ch3.close();
 
 		} catch (PhidgetException e) {
 			e.printStackTrace();
@@ -257,78 +264,67 @@ public class SmartPhidgetStick extends Activity {
 	public void getDistanceSensor (double e ) {
 		if(e > 0.7) {
 			//distance
-			try{
-				ch2 = new VoltageRatioInput();
-				ch2.setIsRemote(true);
-				ch2.setDeviceSerialNumber(39830);
-				ch2.setChannel(3);
-                //ch2.setDataInterval(2000);
+			//	ch2 = new VoltageRatioInput();
+//				ch2.setIsRemote(true);
+//				ch2.setDeviceSerialNumber(39830);
+//				ch2.setChannel(3);
+//				sleep (3000);
+//				ch2.open(5000);
+			try {
 				sleep (3000);
-
-				ch2.addAttachListener(new AttachListener() {
-					public void onAttach(final AttachEvent attachEvent) {
-						AttachEventHandler handler = new AttachEventHandler(ch2);
-						runOnUiThread(handler);
-					}
-				});
-
-				ch2.addDetachListener(new DetachListener() {
-					public void onDetach(final DetachEvent detachEvent) {
-						DetachEventHandler handler = new DetachEventHandler(ch2);
-						runOnUiThread(handler);
-
-					}
-				});
-
-				ch2.addErrorListener(new ErrorListener() {
-					public void onError(final ErrorEvent errorEvent) {
-						ErrorEventHandler handler = new ErrorEventHandler(ch2, errorEvent);
-						runOnUiThread(handler);
-
-					}
-				});
-
-				ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
-					public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-//
-//						VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch2, voltageRatioChangeEvent);
-//						runOnUiThread(handler);
-
-						System.out.println("Distance ( < 0.3 ) " + voltageRatioChangeEvent.getVoltageRatio());
-
-						setServoMotor(voltageRatioChangeEvent.getVoltageRatio() );
-					}
-				});
-
-				ch2.addSensorChangeListener(new VoltageRatioInputSensorChangeListener() {
-					public void onSensorChange(VoltageRatioInputSensorChangeEvent sensorChangeEvent) {
-						VoltageRatioInputSensorChangeEventHandler handler = new VoltageRatioInputSensorChangeEventHandler(ch2, sensorChangeEvent);
-						runOnUiThread(handler);
-					}
-				});
-
-				ch2.open(5000);
-				
-			} catch (PhidgetException pe) {
-				pe.printStackTrace();
 			} catch (InterruptedException interruptedException) {
 				interruptedException.printStackTrace();
 			}
+			ch2.addAttachListener(new AttachListener() {
+				public void onAttach(final AttachEvent attachEvent) {
+					AttachEventHandler handler = new AttachEventHandler(ch2);
+					runOnUiThread(handler);
+				}
+			});
+
+			ch2.addDetachListener(new DetachListener() {
+				public void onDetach(final DetachEvent detachEvent) {
+					DetachEventHandler handler = new DetachEventHandler(ch2);
+					runOnUiThread(handler);
+
+				}
+			});
+
+			ch2.addErrorListener(new ErrorListener() {
+				public void onError(final ErrorEvent errorEvent) {
+					ErrorEventHandler handler = new ErrorEventHandler(ch2, errorEvent);
+					runOnUiThread(handler);
+
+				}
+			});
+
+			ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
+				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
+//						VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch2, voltageRatioChangeEvent);
+//						runOnUiThread(handler);
+					System.out.println("Distance ( < 0.3 ) " + voltageRatioChangeEvent.getVoltageRatio());
+					setServoMotor(voltageRatioChangeEvent.getVoltageRatio());
+				}
+			});
+
+			ch2.addSensorChangeListener(new VoltageRatioInputSensorChangeListener() {
+				public void onSensorChange(VoltageRatioInputSensorChangeEvent sensorChangeEvent) {
+					VoltageRatioInputSensorChangeEventHandler handler = new VoltageRatioInputSensorChangeEventHandler(ch2, sensorChangeEvent);
+					runOnUiThread(handler);
+				}
+			});
 		}
 	}
-
 
 	public void setServoMotor (double e) {
 
 			if(e < 0.15) {
 				try{
-					ch3 = new RCServo();
-					ch3.setIsRemote(true);
-					ch3.setDeviceSerialNumber(19875);
-					ch3.setChannel(0);
-                    //ch3.setDataInterval(2000);
-					ch3.open(500);
-
+//					ch3 = new RCServo();
+//					ch3.setIsRemote(true);
+//					ch3.setDeviceSerialNumber(19875);
+//					ch3.setChannel(0);
+//					ch3.open(500);
 
 					//set position
 					if(servoValue != 180 ) {
@@ -375,7 +371,9 @@ public class SmartPhidgetStick extends Activity {
 						}
 					});
 
-
+					ch.close();
+					ch2.close();
+					ch3.close();
 				} catch (PhidgetException pe) {
 					pe.printStackTrace();
 				} catch (InterruptedException interruptedException) {
@@ -401,38 +399,22 @@ public class SmartPhidgetStick extends Activity {
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
 
-//	public void onResume() {
-//		super.onResume();
-//		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
-//	}
-//
-//	public void onStop() {
-//		super.onStop();
-//		sensorManager.unregisterListener(gyroListener);
-//	}
+	public void onResume() {
+		super.onResume();
+		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
+	}
 
-// gyroscope listener is initialized inside the distance ch2 where if there is an obstacle
-// it will get orientation readings and then send it to motor
+	public void onStop() {
+		super.onStop();
+		sensorManager.unregisterListener(gyroListener);
+	}
+
 	public SensorEventListener gyroListener = new SensorEventListener() {
 		public void onAccuracyChanged(Sensor sensor, int acc) {
 		}
 
 		public void onSensorChanged(SensorEvent event) {
 
-//			float[] rotationMatrix = new float[16];
-//			sensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-//			float[] remappedRotationMatrix = new float[16];
-//			sensorManager.remapCoordinateSystem(rotationMatrix, sensorManager.AXIS_X, sensorManager.AXIS_Z, remappedRotationMatrix);
-//
-//			float[] orientations = new float[3];
-//			sensorManager.getOrientation(remappedRotationMatrix, orientations);
-//
-//			// Convert values in radian to degrees
-//			for (int i = 0; i < 3; i++) {
-//				orientations[i] = (float) (Math.toDegrees(orientations[i]));
-//				System.out.println(orientations[i]);
-//				mLowPassi = lowpass(orientations[i],mLowPassi);
-//			}
 			float x = event.values[0];
 			float y = event.values[1];
 			float z = event.values[2];
@@ -443,7 +425,7 @@ public class SmartPhidgetStick extends Activity {
 			System.out.println("X : " + (int) Math.toDegrees(mLowPassX) + " degrees");
 			System.out.println("Y : " + (int) Math.toDegrees(mLowPassY) + " degrees");
 			System.out.println("Z : " + (int) Math.toDegrees(mLowPassZ) + " degrees");
-//			setServoMotor (mLowPassX, mLowPassY,mLowPassZ );
+
 			if (y > 45){
 				StopObstacle();
 				v.vibrate(50);
