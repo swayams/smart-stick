@@ -41,10 +41,7 @@ public class SmartPhidgetStick extends Activity {
 
 	int servoValue = 0; // for servo angle
 	int readingsCount = 0; // for the number of readings
-
 	double distanceReading = 0.0f;
-
-
 
 	/** Called when the activity is first created. */
 	@Override
@@ -127,9 +124,9 @@ public class SmartPhidgetStick extends Activity {
 					double pressureReading = voltageRatioChangeEvent.getVoltageRatio();
 //					System.out.println("-");
 //					System.out.println("-");
-//					System.out.println("Pressure reading : " + pressureReading);
+					System.out.println("Pressure reading : " + pressureReading);
 
-					if(pressureReading > 0.7) {
+					if(pressureReading > 0.7 && false) {
 
 						System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
 
@@ -139,8 +136,9 @@ public class SmartPhidgetStick extends Activity {
 							servoValue = currentServoValue;
 
 							getDistanceSensor();
-
 							System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
+							StopObstacle();
+							v.vibrate(50);
 							try {
 								sleep(500);
 							} catch (InterruptedException e) {
@@ -150,10 +148,9 @@ public class SmartPhidgetStick extends Activity {
 						} if( distanceReading > 0.15 || readingsCount > 5) {
 							distanceReading = 0.0f;
 							readingsCount = 0;
+							Walk();
 						}
 					}
-//
-
 				}
 			});
 
@@ -197,8 +194,7 @@ public class SmartPhidgetStick extends Activity {
 		}
 
 		public void run() {
-			// remove all keep only print System.out.println("Attached");
-			//System.out.println("Attached");
+			System.out.println("Attached");
 
 		}
 	}
@@ -210,7 +206,6 @@ public class SmartPhidgetStick extends Activity {
 		}
 
 		public void run() {
-			// remove all keep only print System.out.println("Detached");
 			System.out.println("Detached");
 		}
 	}
@@ -244,7 +239,6 @@ public class SmartPhidgetStick extends Activity {
 		}
 
 		public void run() {
-			// remove and put System.out.println(sensorChangeEvent.getSensorValue());
 			System.out.println(sensorChangeEvent.getSensorValue());
 		}
 	}
@@ -289,15 +283,6 @@ public class SmartPhidgetStick extends Activity {
 
 	public void getDistanceSensor ( ) {
 
-		//distance
-		//	ch2 = new VoltageRatioInput();
-//				ch2.setIsRemote(true);
-//				ch2.setDeviceSerialNumber(39830);
-//				ch2.setChannel(3);
-//				sleep (3000);
-//				ch2.open(5000);
-
-
 		try {
 			ch2.open(500);
 		} catch (PhidgetException e) {
@@ -328,9 +313,6 @@ public class SmartPhidgetStick extends Activity {
 
 		ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 			public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-//						VoltageRatioInputVoltageRatioChangeEventHandler handler = new VoltageRatioInputVoltageRatioChangeEventHandler(ch2, voltageRatioChangeEvent);
-//						runOnUiThread(handler);
-
 				distanceReading = voltageRatioChangeEvent.getVoltageRatio();
 
 			}
@@ -350,15 +332,9 @@ public class SmartPhidgetStick extends Activity {
 
 
 			try{
-//					ch3 = new RCServo();
-//					ch3.setIsRemote(true);
-//					ch3.setDeviceSerialNumber(19875);
-//					ch3.setChannel(0);
-					ch3.open(500);
+				ch3.open(500);
 
 				//set position
-
-
 				ch3.setTargetPosition(value);
 				ch3.setEngaged(true);
 
@@ -393,7 +369,6 @@ public class SmartPhidgetStick extends Activity {
 				ch3.addPositionChangeListener(new RCServoPositionChangeListener() {
 					public void onPositionChange(RCServoPositionChangeEvent positionChangeEvent) {
 						RCServoPositionChangeEventHandler handler = new RCServoPositionChangeEventHandler(ch3, positionChangeEvent);
-						//runOnUiThread(handler);
 					}
 				});
 
@@ -415,10 +390,7 @@ public class SmartPhidgetStick extends Activity {
 					ch2.close();
 					ch3.close();
 
-
 				}
-
-
 
 			} catch (PhidgetException pe) {
 				pe.printStackTrace();
@@ -445,6 +417,12 @@ public class SmartPhidgetStick extends Activity {
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
 
+	private void Walk() {
+		// TODO Auto-generated method stub
+		text = "Continue walking there is no obstacles";
+		tts.setLanguage(Locale.US);
+		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+	}
 	public void onResume() {
 		super.onResume();
 		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -471,10 +449,15 @@ public class SmartPhidgetStick extends Activity {
 			System.out.println("X : " + (int) Math.toDegrees(mLowPassX) + " degrees");
 			System.out.println("Y : " + (int) Math.toDegrees(mLowPassY) + " degrees");
 			System.out.println("Z : " + (int) Math.toDegrees(mLowPassZ) + " degrees");
-
+			try {
+				sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			if (y > 45){
-				StopObstacle();
 				v.vibrate(50);
+				StopObstacle();
+				setServoMotor((int) y);
 			}
 		}
 	};
