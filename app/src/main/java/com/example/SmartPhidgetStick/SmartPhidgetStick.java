@@ -1,6 +1,7 @@
 // Search CSCM79 Advice for test modification
 package com.example.SmartPhidgetStick;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -13,12 +14,16 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.os.Vibrator;
 import android.speech.tts.TextToSpeech;
+import android.util.*;
 
 import com.phidget22.*;
 
 import java.text.DecimalFormat;
 import java.util.Locale;
 
+import static android.util.FloatMath.cos;
+import static android.util.FloatMath.sin;
+import static android.util.FloatMath.sqrt;
 import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
 public class SmartPhidgetStick extends Activity {
@@ -29,6 +34,9 @@ public class SmartPhidgetStick extends Activity {
 
 	SensorManager sensorManager;
 	Sensor Gyrosensor;
+
+
+	public static float EPSILON;
 	boolean isHubPort;
 	TextToSpeech tts;
 	String text;
@@ -120,10 +128,7 @@ public class SmartPhidgetStick extends Activity {
 
 			ch.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
-
 					double pressureReading = voltageRatioChangeEvent.getVoltageRatio();
-//					System.out.println("-");
-//					System.out.println("-");
 					System.out.println("Pressure reading : " + pressureReading);
 
 					if(pressureReading > 0.7 && false) {
@@ -423,49 +428,90 @@ public class SmartPhidgetStick extends Activity {
 		tts.setLanguage(Locale.US);
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
+
+
 	public void onResume() {
 		super.onResume();
-		sensorManager.registerListener(gyroListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
+		sensorManager.registerListener(SensorListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
 	}
 
 	public void onStop() {
 		super.onStop();
-		sensorManager.unregisterListener(gyroListener);
+		sensorManager.unregisterListener(SensorListener);
 	}
 
-	public SensorEventListener gyroListener = new SensorEventListener() {
+	// Create a constant to convert nanoseconds to seconds.
+	private static final float NS2S = 1.0f / 1000000000.0f;
+	private final float[] deltaRotationVector = new float[4];
+	private float timestamp;
+
+	public SensorEventListener SensorListener = new SensorEventListener() {
 		public void onAccuracyChanged(Sensor sensor, int acc) {
 		}
 
+		@SuppressLint("LongLogTag")
 		public void onSensorChanged(SensorEvent event) {
-
-			float x = event.values[0];
-			float y = event.values[1];
-			float z = event.values[2];
-			mLowPassX = lowpass(x,mLowPassX);
-			mLowPassY = lowpass(y,mLowPassY);
-			mLowPassZ = lowpass(z,mLowPassZ);
-
-			System.out.println("X : " + (int) Math.toDegrees(mLowPassX) + " degrees");
-			System.out.println("Y : " + (int) Math.toDegrees(mLowPassY) + " degrees");
-			System.out.println("Z : " + (int) Math.toDegrees(mLowPassZ) + " degrees");
-			try {
-				sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			float axisX= 0.0f;
+			float axisY= 0.0f;
+			float axisZ= 0.0f;
+			float dT =0.0f;
+			// This timestep's delta rotation to be multiplied by the current rotation
+			// after computing it from the gyro sample data.
+			if (timestamp != 0) {
+				dT = (event.timestamp - timestamp) * NS2S;
+				// Axis of the rotation sample, not normalized yet.
+				 axisX = event.values[0];
+				 axisY = event.values[1];
+				 axisZ = event.values[2];
+				// Calculate the angular speed of the sample
+				float omegaMagnitude = sqrt(axisX * axisX + axisY* axisY + axisZ * axisZ);
+				// Normalize the rotation vector if it's big enough to get the axis
+				// (that is, EPSILON should represent your maximum allowable margin of error)
+				if (omegaMagnitude > EPSILON) {
+					axisX /= omegaMagnitude;
+					axisY /= omegaMagnitude;
+					axisZ /= omegaMagnitude;
+				}
+				// Integrate around this axis with the angular speed by the timeste in order to get a delta rotation from this sample over the timestep
+				// We will convert this axis-angle representation of the delta rotation into a quaternion before turning it into the rotation matrix.
+				float thetaOverTwo = omegaMagnitude * dT / 2.0f;
+				float sinThetaOverTwo = sin(thetaOverTwo);
+				float cosThetaOverTwo = cos(thetaOverTwo);
+				deltaRotationVector[0] = cosThetaOverTwo;
+				deltaRotationVector[1] = sinThetaOverTwo * axisX;
+				deltaRotationVector[2] = sinThetaOverTwo * axisY;
+				deltaRotationVector[3] = sinThetaOverTwo * axisZ;
 			}
-			if (y > 45){
-				v.vibrate(50);
-				StopObstacle();
-				setServoMotor((int) y);
-			}
+				timestamp = event.timestamp;
+				float[] deltaRotationMatrix = new float[9];
+				SensorManager.getRotationMatrixFromVector(deltaRotationMatrix, deltaRotationVector);
+//				User code should concatenate the delta rotation we computed with the current rotation in order to get the updated rotation
+				float	X= (float) ((deltaRotationMatrix[1]+axisX*dT)*180/Math.PI);
+				float	Y= (float) ((deltaRotationMatrix[2]+axisY*dT)*180/Math.PI);
+				float	Z= (float) ((deltaRotationMatrix[3]+axisZ*dT)*180/Math.PI);
+				float Angle =(float) ((deltaRotationMatrix[0])*180/Math.PI);
+				mLowPassX = lowpass(X, mLowPassX);
+				mLowPassY = lowpass(Y, mLowPassY);
+				mLowPassZ = lowpass(Z, mLowPassZ);
+//				Log.i("Sensor Orientation GyroScope", "X: " + (int)(mLowPassX)  + //
+//					" Y: " + (int) (mLowPassY)+ //
+//					" Z: " + (int)(mLowPassZ) +" Angle: "+ (int) Angle);
+
+			Log.i("Sensor Orientation GyroScope", "X: " + (int)(X)  + //
+					" Y: " + (int) (Y)+ //
+					" Z: " + (int)(Z) +" Angle: "+ (int) Angle);
+				if (Angle < 45) {
+					v.vibrate(50);
+					StopObstacle();
+					setServoMotor((int)Angle);
+				}
 		}
 	};
-
-// filter function for the orientation readings in gyroscope
+//	 filter function for the orientation readings in gyroscope
 	float lowpass(float current ,float last ){
 
 	return last * (1.0f - a) + current*a;
 	}
+
 }
 
