@@ -78,17 +78,17 @@ public class SmartPhidgetStick extends Activity {
 
 			//CSCM79 Advice
 			//Add a specific network server to communicate with Phidgets remotely
-			Net.addServer("", "192.168.0.210", 5661, "", 0);
+			Net.addServer("", "10.65.2.244", 5661, "", 0);
 
 			//CSCM79 Advice
 			//Set addressing parameters to specify which channel to open (if any)
 			ch.setIsRemote(true);
-			ch.setChannel(0);
+			ch.setChannel(3);
 			ch.setDeviceSerialNumber(39830);
 
 			ch2.setIsRemote(true);
 			ch2.setDeviceSerialNumber(39830);
-			ch2.setChannel(3);
+			ch2.setChannel(4);
 
 			ch3.setIsRemote(true);
 			ch3.setDeviceSerialNumber(19875);
@@ -129,13 +129,13 @@ public class SmartPhidgetStick extends Activity {
 			ch.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 				public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
 					double pressureReading = voltageRatioChangeEvent.getVoltageRatio();
-					System.out.println("Pressure reading : " + pressureReading);
-
-					if(pressureReading > 0.7 && false) {
+				//System.out.println("Pressure reading : " + pressureReading);
+					getDistanceSensor();
+					if(pressureReading > 0.7 ) {
 
 						System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
-
-						while( distanceReading < 0.15 && readingsCount < 5 ) {
+						getDistanceSensor();
+						while( distanceReading < 0.12 && readingsCount < 5 ) {
 							int currentServoValue = servoValue != 180 ? servoValue + 45 : 0;
 							setServoMotor(currentServoValue);
 							servoValue = currentServoValue;
@@ -150,10 +150,25 @@ public class SmartPhidgetStick extends Activity {
 								e.printStackTrace();
 							}
 
-						} if( distanceReading > 0.15 || readingsCount > 5) {
-							distanceReading = 0.0f;
+						}
+					}
+
+					if(readingsCount > 5 ) {
+						try {
 							readingsCount = 0;
-							Walk();
+							distanceReading = 0.0f;
+							servoValue = 90;
+							ch3.setTargetPosition(0);
+							ch3.setEngaged(true);
+
+							System.out.println("-");
+							System.out.println("-");
+							System.out.println("-");
+							System.out.println("-");
+							ch2.close();
+							ch3.close();
+						} catch (PhidgetException pe) {
+							pe.printStackTrace();
 						}
 					}
 				}
@@ -200,7 +215,6 @@ public class SmartPhidgetStick extends Activity {
 
 		public void run() {
 			System.out.println("Attached");
-
 		}
 	}
 	class DetachEventHandler implements Runnable {
@@ -289,7 +303,7 @@ public class SmartPhidgetStick extends Activity {
 	public void getDistanceSensor ( ) {
 
 		try {
-			ch2.open(500);
+			ch2.open();
 		} catch (PhidgetException e) {
 			e.printStackTrace();
 		}
@@ -337,13 +351,13 @@ public class SmartPhidgetStick extends Activity {
 
 
 			try{
-				ch3.open(500);
+				ch3.open();
 
 				//set position
 				ch3.setTargetPosition(value);
 				ch3.setEngaged(true);
 
-				sleep(1000);
+				sleep(2000);
 
 				//  0 - 90, 1 - 45,  2 - 0, 3 - 135, 4 - 180
 				System.out.println("current servo motor positon " + servoValue + " thread: " + currentThread().getId());
@@ -378,13 +392,13 @@ public class SmartPhidgetStick extends Activity {
 				});
 
 
-				if( distanceReading > 0.15 || readingsCount > 4) {
+				if( distanceReading > 0.1 || readingsCount > 4) {
 
 					System.out.println("process stops at distance: " + distanceReading + " reading count : " + readingsCount);
 
 					readingsCount = 0;
 					distanceReading = 0.0f;
-					servoValue = -45;
+					servoValue = 90;
 					ch3.setTargetPosition(0);
 					ch3.setEngaged(true);
 
@@ -497,9 +511,9 @@ public class SmartPhidgetStick extends Activity {
 //					" Y: " + (int) (mLowPassY)+ //
 //					" Z: " + (int)(mLowPassZ) +" Angle: "+ (int) Angle);
 
-			Log.i("Sensor Orientation GyroScope", "X: " + (int)(X)  + //
-					" Y: " + (int) (Y)+ //
-					" Z: " + (int)(Z) +" Angle: "+ (int) Angle);
+//			Log.i("Sensor Orientation GyroScope", "X: " + (int)(X)  + //
+//					" Y: " + (int) (Y)+ //
+//					" Z: " + (int)(Z) +" Angle: "+ (int) Angle);
 				if (Angle < 45) {
 					v.vibrate(50);
 					StopObstacle();
