@@ -33,8 +33,7 @@ public class SmartPhidgetStick extends Activity {
 	RCServo ch3;
 
 	SensorManager sensorManager;
-	Sensor Gyrosensor;
-
+	Sensor Gyrosensor;;
 
 	public static float EPSILON;
 	boolean isHubPort;
@@ -136,16 +135,15 @@ public class SmartPhidgetStick extends Activity {
 						System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
 
 						while( distanceReading < 0.15 && readingsCount < 5 ) {
+							StopObstacle();
+							v.vibrate(50);
 							int currentServoValue = servoValue != 180 ? servoValue + 45 : 0;
 							setServoMotor(currentServoValue);
 							servoValue = currentServoValue;
-
 							getDistanceSensor();
 							System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
-							StopObstacle();
-							v.vibrate(50);
 							try {
-								sleep(500);
+								sleep(2000);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
@@ -178,12 +176,12 @@ public class SmartPhidgetStick extends Activity {
 			public void onInit(int status) {
 				// TODO Auto-generated method stub
 				if(status == TextToSpeech.SUCCESS){
+					StartWalk();
 					int result=tts.setLanguage(Locale.US);
 					if(result==TextToSpeech.LANG_MISSING_DATA ||
 							result==TextToSpeech.LANG_NOT_SUPPORTED){
 						android.util.Log.e("error", "This Language is not supported");
 					}
-
 				}
 				else
 					Log.e("error", "Initilization Failed!");
@@ -335,15 +333,17 @@ public class SmartPhidgetStick extends Activity {
 
 	public void setServoMotor (int value) {
 
+			if(value > 45){
+				v.vibrate(50);
+				StopObstacle();}
 
 			try{
 				ch3.open(500);
-
 				//set position
 				ch3.setTargetPosition(value);
 				ch3.setEngaged(true);
 
-				sleep(1000);
+				sleep(2000);
 
 				//  0 - 90, 1 - 45,  2 - 0, 3 - 135, 4 - 180
 				System.out.println("current servo motor positon " + servoValue + " thread: " + currentThread().getId());
@@ -381,13 +381,12 @@ public class SmartPhidgetStick extends Activity {
 				if( distanceReading > 0.15 || readingsCount > 4) {
 
 					System.out.println("process stops at distance: " + distanceReading + " reading count : " + readingsCount);
-
+					Walk();
 					readingsCount = 0;
 					distanceReading = 0.0f;
 					servoValue = -45;
 					ch3.setTargetPosition(0);
 					ch3.setEngaged(true);
-
 					System.out.println("-");
 					System.out.println("-");
 					System.out.println("-");
@@ -402,7 +401,6 @@ public class SmartPhidgetStick extends Activity {
 			} catch (InterruptedException interruptedException) {
 				interruptedException.printStackTrace();
 			}
-
 	}
 
 	@Override
@@ -418,6 +416,13 @@ public class SmartPhidgetStick extends Activity {
 	private void StopObstacle() {
 		// TODO Auto-generated method stub
 		text = "Please stop there is an obstecale this side";
+		tts.setLanguage(Locale.US);
+		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
+	}
+
+	private void StartWalk() {
+		// TODO Auto-generated method stub
+		text = "Start Walking";
 		tts.setLanguage(Locale.US);
 		tts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
 	}
@@ -451,37 +456,37 @@ public class SmartPhidgetStick extends Activity {
 
 		@SuppressLint("LongLogTag")
 		public void onSensorChanged(SensorEvent event) {
+
 			float axisX= 0.0f;
 			float axisY= 0.0f;
 			float axisZ= 0.0f;
 			float dT =0.0f;
 			// This timestep's delta rotation to be multiplied by the current rotation
 			// after computing it from the gyro sample data.
-			if (timestamp != 0) {
-				dT = (event.timestamp - timestamp) * NS2S;
-				// Axis of the rotation sample, not normalized yet.
-				 axisX = event.values[0];
-				 axisY = event.values[1];
-				 axisZ = event.values[2];
-				// Calculate the angular speed of the sample
-				float omegaMagnitude = sqrt(axisX * axisX + axisY* axisY + axisZ * axisZ);
-				// Normalize the rotation vector if it's big enough to get the axis
-				// (that is, EPSILON should represent your maximum allowable margin of error)
-				if (omegaMagnitude > EPSILON) {
-					axisX /= omegaMagnitude;
-					axisY /= omegaMagnitude;
-					axisZ /= omegaMagnitude;
+				if (timestamp != 0) {
+					dT = (event.timestamp - timestamp) * NS2S;
+					axisX = event.values[0];
+					axisY = event.values[1];
+					axisZ = event.values[2];
+					// Calculate the angular speed of the sample
+					float omegaMagnitude = sqrt(axisX *axisX + axisY* axisY + axisZ * axisZ);
+					// Normalize the rotation vector if it's big enough to get the axis
+					// (that is, EPSILON should represent your maximum allowable margin of error)
+					if (omegaMagnitude > EPSILON) {
+						axisX /= omegaMagnitude;
+						axisY /= omegaMagnitude;
+						axisZ /= omegaMagnitude;
+					}
+					// Integrate around this axis with the angular speed by the timeste in order to get a delta rotation from this sample over the timestep
+					// We will convert this axis-angle representation of the delta rotation into a quaternion before turning it into the rotation matrix.
+					float thetaOverTwo = omegaMagnitude * dT / 2.0f;
+					float sinThetaOverTwo = sin(thetaOverTwo);
+					float cosThetaOverTwo = cos(thetaOverTwo);
+					deltaRotationVector[0] = cosThetaOverTwo;
+					deltaRotationVector[1] = sinThetaOverTwo * axisX;
+					deltaRotationVector[2] = sinThetaOverTwo * axisY;
+					deltaRotationVector[3] = sinThetaOverTwo * axisZ;
 				}
-				// Integrate around this axis with the angular speed by the timeste in order to get a delta rotation from this sample over the timestep
-				// We will convert this axis-angle representation of the delta rotation into a quaternion before turning it into the rotation matrix.
-				float thetaOverTwo = omegaMagnitude * dT / 2.0f;
-				float sinThetaOverTwo = sin(thetaOverTwo);
-				float cosThetaOverTwo = cos(thetaOverTwo);
-				deltaRotationVector[0] = cosThetaOverTwo;
-				deltaRotationVector[1] = sinThetaOverTwo * axisX;
-				deltaRotationVector[2] = sinThetaOverTwo * axisY;
-				deltaRotationVector[3] = sinThetaOverTwo * axisZ;
-			}
 				timestamp = event.timestamp;
 				float[] deltaRotationMatrix = new float[9];
 				SensorManager.getRotationMatrixFromVector(deltaRotationMatrix, deltaRotationVector);
@@ -493,19 +498,13 @@ public class SmartPhidgetStick extends Activity {
 				mLowPassX = lowpass(X, mLowPassX);
 				mLowPassY = lowpass(Y, mLowPassY);
 				mLowPassZ = lowpass(Z, mLowPassZ);
-//				Log.i("Sensor Orientation GyroScope", "X: " + (int)(mLowPassX)  + //
-//					" Y: " + (int) (mLowPassY)+ //
-//					" Z: " + (int)(mLowPassZ) +" Angle: "+ (int) Angle);
 
-			Log.i("Sensor Orientation GyroScope", "X: " + (int)(X)  + //
-					" Y: " + (int) (Y)+ //
-					" Z: " + (int)(Z) +" Angle: "+ (int) Angle);
-				if (Angle < 45) {
-					v.vibrate(50);
-					StopObstacle();
+				Log.i("Sensor Orientation GyroScope", "X: " + (int)(mLowPassX)  + //
+					" Y: " + (int) (mLowPassY)+ //
+					" Z: " + (int)(mLowPassZ) +" Angle: "+ (int) Angle);
+
 					setServoMotor((int)Angle);
-				}
-		}
+			}
 	};
 //	 filter function for the orientation readings in gyroscope
 	float lowpass(float current ,float last ){
