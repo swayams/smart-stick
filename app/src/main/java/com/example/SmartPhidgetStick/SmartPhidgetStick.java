@@ -19,6 +19,7 @@ import android.util.*;
 import com.phidget22.*;
 
 import java.text.DecimalFormat;
+import java.util.Date;
 import java.util.Locale;
 
 import static android.util.FloatMath.cos;
@@ -77,22 +78,22 @@ public class SmartPhidgetStick extends Activity {
 
 			//CSCM79 Advice
 			//Add a specific network server to communicate with Phidgets remotely
-			Net.addServer("", "10.65.2.244", 5661, "", 0);
+			Net.addServer("", "192.168.0.210", 5661, "", 0);
 
 			//CSCM79 Advice
 			//Set addressing parameters to specify which channel to open (if any)
 			ch.setIsRemote(true);
-			ch.setChannel(3);
+			ch.setChannel(4);
 			ch.setDeviceSerialNumber(39830);
 
 			ch2.setIsRemote(true);
 			ch2.setDeviceSerialNumber(39830);
-			ch2.setChannel(4);
+			ch2.setChannel(3);
+
 
 			ch3.setIsRemote(true);
 			ch3.setDeviceSerialNumber(19875);
 			ch3.setChannel(0);
-
 			//Remember isHubPort setting
 			if (savedInstanceState != null) {
 				isHubPort = savedInstanceState.getBoolean("isHubPort");
@@ -134,7 +135,7 @@ public class SmartPhidgetStick extends Activity {
 
 						System.out.println("readingCount: "+ readingsCount++ + " Distance : " + distanceReading + " servo : " + servoValue);
 
-						while( distanceReading < 0.15 && readingsCount < 5 ) {
+						while( distanceReading < 0.08 && readingsCount < 5 ) {
 							StopObstacle();
 							v.vibrate(50);
 							int currentServoValue = servoValue != 180 ? servoValue + 45 : 0;
@@ -330,6 +331,7 @@ public class SmartPhidgetStick extends Activity {
 
 		ch2.addVoltageRatioChangeListener(new VoltageRatioInputVoltageRatioChangeListener() {
 			public void onVoltageRatioChange(VoltageRatioInputVoltageRatioChangeEvent voltageRatioChangeEvent) {
+				//System.out.println("distance" + voltageRatioChangeEvent.getVoltageRatio());
 				distanceReading = voltageRatioChangeEvent.getVoltageRatio();
 
 			}
@@ -347,14 +349,22 @@ public class SmartPhidgetStick extends Activity {
 
 	public void setServoMotor (int value) {
 
-			if(value > 45){
-				v.vibrate(50);
-				StopObstacle();}
+//			if(value > 45){
+//				//v.vibrate(50);
+//				StopObstacle();}
 
 			try{
+
 				ch3.open(500);
 				//set position
-				ch3.setTargetPosition(value);
+				//double currentAngle = ch3.getTargetPosition();
+				double angle = 0;
+				servoValue += value;
+
+				if(servoValue > 180) {
+					servoValue = 0;
+				}
+				ch3.setTargetPosition((int)servoValue);
 				ch3.setEngaged(true);
 
 				sleep(2000);
@@ -451,7 +461,7 @@ public class SmartPhidgetStick extends Activity {
 
 	public void onResume() {
 		super.onResume();
-		sensorManager.registerListener(SensorListener, Gyrosensor, SensorManager.SENSOR_DELAY_NORMAL);
+		sensorManager.registerListener(SensorListener, Gyrosensor, SensorManager.SENSOR_DELAY_UI);
 	}
 
 	public void onStop() {
@@ -470,6 +480,9 @@ public class SmartPhidgetStick extends Activity {
 
 		@SuppressLint("LongLogTag")
 		public void onSensorChanged(SensorEvent event) {
+
+
+
 
 			float axisX= 0.0f;
 			float axisY= 0.0f;
@@ -513,11 +526,15 @@ public class SmartPhidgetStick extends Activity {
 				mLowPassY = lowpass(Y, mLowPassY);
 				mLowPassZ = lowpass(Z, mLowPassZ);
 
-				Log.i("Sensor Orientation GyroScope", "X: " + (int)(mLowPassX)  + //
-					" Y: " + (int) (mLowPassY)+ //
-					" Z: " + (int)(mLowPassZ) +" Angle: "+ (int) Angle);
+				Log.i("Sensor Orientation GyroScope", //"X: " + (int)mLowPassX  +
+					" Y: " +  (int)mLowPassY+  " angle: " + (int)Angle +
+					//" Z: " + (int)mLowPassZ +
+						" distance: " + distanceReading) ;
 
+				if((int)Angle != 57 && distanceReading < 0.08) {
 					setServoMotor((int)Angle);
+				}
+
 			}
 	};
 //	 filter function for the orientation readings in gyroscope
